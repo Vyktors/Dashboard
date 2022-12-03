@@ -4,6 +4,31 @@ library(gridlayout)
 library(ggplot2)
 library(dplyr)
 
+
+# we have a tabulation separator
+campaign_data <- read.csv('data/marketing_campaign.csv', sep='\t')
+
+# add age category column
+campaign_data['Age'] <- 2022 - campaign_data['Year_Birth']
+campaign_data <- campaign_data %>%
+  mutate(Age_Category = case_when(
+    Age <= 14 ~ 'Children',
+    Age <= 24 ~ 'Youth',
+    Age <= 64 ~ 'Adult',
+    Age >= 65 ~ 'Senior',
+  ))
+
+# cleaning data
+# Change Alone to single and remove YOLO and absurd
+campaign_data["Marital_Status"][campaign_data["Marital_Status"] == "Alone"] <- "Single"
+campaign_data <- campaign_data[!(campaign_data$Marital_Status %in% c("YOLO", "Absurd")), ]
+
+
+age_category_list <- unique(campaign_data$Age_Category)
+education_list <- unique(campaign_data$Education)
+marital_status_list <- unique(campaign_data$Marital_Status)
+
+
 ui <- grid_page(
   layout = c(
     "area2 header",
