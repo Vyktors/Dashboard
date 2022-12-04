@@ -3,6 +3,33 @@ library(shiny)
 library(gridlayout)
 library(ggplot2)
 library(dplyr)
+library(DT)
+library(tidyverse)
+
+
+# we have a tabulation separator
+campaign_data <- read.csv('data/marketing_campaign.csv', sep='\t')
+
+# add age category column
+campaign_data['Age'] <- 2022 - campaign_data['Year_Birth']
+campaign_data <- campaign_data %>%
+  mutate(Age_Category = case_when(
+    Age <= 14 ~ 'Children',
+    Age <= 24 ~ 'Youth',
+    Age <= 64 ~ 'Adult',
+    Age >= 65 ~ 'Senior',
+  ))
+
+# cleaning data
+# Change Alone to single and remove YOLO and absurd
+campaign_data["Marital_Status"][campaign_data["Marital_Status"] == "Alone"] <- "Single"
+campaign_data <- campaign_data[!(campaign_data$Marital_Status %in% c("YOLO", "Absurd")), ]
+
+
+age_category_list <- unique(campaign_data$Age_Category)
+education_list <- unique(campaign_data$Education)
+marital_status_list <- unique(campaign_data$Marital_Status)
+
 
 ui <- grid_page(
   layout = c(
@@ -58,6 +85,7 @@ ui <- grid_page(
                 gap_size = "10px",
                 grid_card(
                   area = "area1",
+                  
                   sliderInput(
                     inputId = "inputId",
                     label = "Example Slider",
@@ -212,8 +240,8 @@ ui <- grid_page(
         grid_container(
           layout = c(
             "title_demographic title_demographic title_demographic",
-            "area8             area9             area0            ",
-            "area4             area4             area0            "
+            "area8             area8             area0            ",
+            "area9             area4             area0            "
           ),
           row_sizes = c(
             "0.27fr",
@@ -232,10 +260,31 @@ ui <- grid_page(
             tabPanel(
               title = "My Shiny App",
               grid_container(
-                layout = ".",
+                layout = "area1",
                 row_sizes = "1.61fr",
                 col_sizes = "1.01fr",
-                gap_size = "10px"
+                gap_size = "10px",
+                grid_card(
+                  area = "area1",
+                  title = "Fig. 1:",
+                  # Select which the age category to plot, select all by default
+                  checkboxGroupInput(inputId = "selected_age",
+                                     label = "Select the age category:",
+                                     choices = age_category_list,
+                                     selected = age_category_list),
+                  
+                  # Select which the education level to plot, select all by default
+                  checkboxGroupInput(inputId = "selected_education",
+                                     label = "Select the education level:",
+                                     choices = education_list,
+                                     selected = education_list),
+                  
+                  # Select which the marital status to plot, select all by default
+                  checkboxGroupInput(inputId = "selected_marital_status",
+                                     label = "Select the marital status:",
+                                     choices = marital_status_list,
+                                     selected = marital_status_list)
+                )
               )
             )
           ),
@@ -245,7 +294,8 @@ ui <- grid_page(
             alignment = "start"
           ),
           grid_card(area = "area4"),
-          grid_card(area = "area8"),
+          grid_card(area = "area8", 
+                    plotOutput("amountGraph")),
           grid_card(area = "area9")
         )
       )
@@ -304,6 +354,53 @@ rate") +
       coord_equal() +
       theme_minimal()
   })
+  
+  
+  # filter data
+  amount_graph_filtered_data = reactive({
+    req(input$selected_age) # ensure availablity of value before proceeding
+    req(input$selected_education)
+    req(input$selected_marital_status)
+    filter(campaign_data, Age_Category %in% input$selected_age) %>%
+      filter(Education %in% input$selected_education) %>%
+      filter(Marital_Status %in% input$selected_marital_status)
+  })
+  
+  
+  # merge the MntWines, MntFruits, ... and the other amount columns in on column MntCategory
+  product_data <- reactive({
+    amount_graph_filtered_data()[c("MntWines", "MntFruits", "MntMeatProducts", "MntFishProducts", "MntSweetProducts", "MntGoldProds")] %>%
+      pivot_longer(cols=c("MntWines", "MntFruits", "MntMeatProducts", "MntFishProducts", "MntSweetProducts", "MntGoldProds"),
+                   names_to="MntCategory",
+                   values_to="Amount")
+  })
+  
+  # get the percentage of the total amount per MntCategory
+  product_data_percentage <- reactive({
+    product_data() %>%
+      mutate(MntCategory = factor(MntCategory)) %>%
+      group_by(MntCategory) %>%
+      summarise(total = sum(Amount)) %>%
+      mutate(proportion = total / sum(total)) %>%
+      arrange(desc(proportion)) %>%
+      mutate(proportion = round(proportion, 2))
+  })
+  
+  # plot the graph
+  output$amountGraph <- renderPlot({
+    ggplot(data = product_data_percentage()) +
+      geom_pointrange(mapping = aes(x = reorder(MntCategory, -total), y = total, ymin = 0, ymax = total)) +
+      labs(title="Percentage of amount spent on each category",
+           x ="Category", y = "Total Expenses")
+  })
+  
+  output$table <- DT::renderDataTable({
+    DT::datatable(data = product_data_percentage(), 
+                  options = list(pageLength = 10), 
+                  colnames = c('Product category', 'Total expenses', 'Percentage'),
+                  rownames = FALSE)
+  })
+  
                
 }
 
