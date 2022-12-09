@@ -384,8 +384,7 @@ rate") +
   output$placeGraph <- renderPlot({
     ggplot(place_data_per_filter()) +
       geom_tile(aes_string(x = 'Places', y = input$place_y, fill = 'proportion')) +
-      labs(title="Percentage of the number of purchases per place",
-           x ="Places", y = "Age category")
+      labs(title="Percentage of the number of purchases per place")
   })
   
   
