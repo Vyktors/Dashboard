@@ -198,8 +198,8 @@ ui <- grid_page(
         grid_container(
           layout = c(
             "title_demographic title_demographic title_demographic",
-            "area2             area3             area0            ",
-            "area4             area4             area0            "
+            "area2             area2             area0            ",
+            "area3             area4             area0            "
           ),
           row_sizes = c(
             "0.27fr",
@@ -218,10 +218,21 @@ ui <- grid_page(
             tabPanel(
               title = "My Shiny App",
               grid_container(
-                layout = ".",
+                layout = "area1",
                 row_sizes = "1.61fr",
                 col_sizes = "1.01fr",
-                gap_size = "10px"
+                gap_size = "10px",
+                grid_card(
+                  area = "area1",
+                  title = "Fig. 1:",
+                  # Select which the column to plot
+                  selectInput(inputId = "place_y", 
+                              label = "Y-axis:",
+                              choices = c("Education" = "Education", 
+                                          "Marital status" = "Marital_Status", 
+                                          "Age category" = "Age_Category"), 
+                              selected = "Age_Category")
+                )
               )
             )
           ),
@@ -230,7 +241,8 @@ ui <- grid_page(
             content = "Marketing Analysis",
             alignment = "start"
           ),
-          grid_card(area = "area2"),
+          grid_card(area = "area2",
+                    plotOutput("placeGraph")),
           grid_card(area = "area3"),
           grid_card(area = "area4")
         )
@@ -355,7 +367,29 @@ rate") +
       theme_minimal()
   })
   
+  ###### Marketing places
+  place_data <- campaign_data %>%
+    pivot_longer(cols=c("NumWebPurchases", "NumCatalogPurchases", "NumStorePurchases"),
+                 names_to="Places",
+                 values_to="Count")
   
+  place_data_per_filter <- reactive({
+    place_data %>%
+      group_by_at(c(input$place_y, 'Places')) %>%
+      summarise(total = sum(Count)) %>%
+      group_by_at(input$place_y) %>%
+      mutate(proportion = total / sum(total))
+  })
+  
+  output$placeGraph <- renderPlot({
+    ggplot(place_data_per_filter()) +
+      geom_tile(aes_string(x = 'Places', y = input$place_y, fill = 'proportion')) +
+      labs(title="Percentage of the number of purchases per place",
+           x ="Places", y = "Age category")
+  })
+  
+  
+  ###### Popular products
   # filter data
   amount_graph_filtered_data = reactive({
     req(input$selected_age) # ensure availablity of value before proceeding
