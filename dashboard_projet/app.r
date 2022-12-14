@@ -11,7 +11,7 @@ library(tidyverse)
 campaign_data <- read.csv('data/marketing_campaign.csv', sep='\t')
 
 # add age category column
-campaign_data['Age'] <- 2022 - campaign_data['Year_Birth']
+campaign_data['Age'] <- 2019 - campaign_data['Year_Birth']
 campaign_data <- campaign_data %>%
   mutate(Age_Category = case_when(
     Age <= 14 ~ 'Children',
@@ -19,6 +19,20 @@ campaign_data <- campaign_data %>%
     Age <= 64 ~ 'Adult',
     Age >= 65 ~ 'Senior',
   ))
+
+# add income range
+campaign_data <- campaign_data %>%
+  mutate(Income_Range = case_when(
+    Income < 10000 ~ '0 - 10k',
+    Income < 20000 ~ '10k - 20k',
+    Income < 45000 ~ '20k - 45k',
+    Income < 60000 ~ '45k - 60k',
+    Income < 75000 ~ '60k - 75k',
+    Income >= 75000 ~ '75k+',
+  ))
+
+campaign_data['Total_childrens'] <- campaign_data['Kidhome'] + campaign_data['Teenhome']
+
 
 # cleaning data
 # Change Alone to single and remove YOLO and absurd
@@ -174,12 +188,27 @@ ui <- grid_page(
             area = "area0",
             title = "Filters",
             tabPanel(
-              title = "My Shiny App",
+              title = "Demographic_Filters",
               grid_container(
-                layout = ".",
-                row_sizes = "1.72fr",
+                layout = "area1",
+                row_sizes = "1.61fr",
                 col_sizes = "1.01fr",
-                gap_size = "10px"
+                gap_size = "10px",
+                grid_card(
+                  area = "area1",
+                  radioButtons(
+                    inputId = "demo_filter_group",
+                    label = "Trier par",
+                    choices = list(
+                      `Âge` = "Age_Category",
+                      `Nombre d'enfant` = "Total_childrens",
+                      `Éducation` = "Education",
+                      `Revenu Annuel` = "Income_Range",
+                      `Statut Marital` = "Marital_Status"
+                    ),
+                    width = "100%"
+                  )
+                )
               )
             )
           ),
@@ -188,9 +217,9 @@ ui <- grid_page(
             content = "Demographic Analysis",
             alignment = "start"
           ),
-          grid_card(area = "area2"),
+          grid_card(area = "area2", plotOutput("demoGraph")),
           grid_card(area = "area4"),
-          grid_card(area = "area7")
+          grid_card(area = "area7", plotOutput("demoComplain"))
         )
       ),
       tabPanel(
@@ -241,8 +270,7 @@ ui <- grid_page(
             content = "Marketing Analysis",
             alignment = "start"
           ),
-          grid_card(area = "area2",
-                    plotOutput("placeGraph")),
+          grid_card(area = "area2", plotOutput("placeGraph")),
           grid_card(area = "area3"),
           grid_card(area = "area4")
         )
@@ -325,6 +353,59 @@ server <- function(input, output) {
   data <- read.csv('data/marketing_campaign.csv', sep='\t')
   
   
+  ###Demographic plots
+  
+  ##Graph répartition Consommateurs
+  demo_per_filter_graph <- reactive({
+    #Remove any N/A data from selected column
+    campaign_data <- campaign_data[!(is.na(campaign_data[input$demo_filter_group])),]
+    
+    
+    #Make proportion from selected column
+    campaign_data %>%
+      group_by_at(input$demo_filter_group) %>%
+      summarise(total = n()) %>%
+      mutate(proportion = (total / sum(total))*100)
+  })
+  
+  output$demoGraph <- renderPlot({
+    ggplot(demo_per_filter_graph(), 
+         mapping = aes_string(
+           x = input$demo_filter_group,
+           y = 'proportion',
+           fill = input$demo_filter_group
+         )) +
+    geom_col() +
+    labs(title= "Répartition des comsommateurs", y = "%")
+  })
+  
+  
+  ##Graph répartition Consommateurs s'ayant plain
+  demo_per_filter_complain <- reactive({
+    #Remove any N/A data from selected column
+    
+    campaign_data <- filter(campaign_data, Complain == 1)
+    
+    #Make proportion from selected column
+    campaign_data %>%
+      group_by_at(input$demo_filter_group) %>%
+      summarise(total = n()) %>%
+      mutate(proportionC = (total / sum(total))*100)
+  })
+  
+  output$demoComplain <- renderPlot({
+    ggplot(demo_per_filter_complain(), 
+           mapping = aes_string(
+             x = input$demo_filter_group,
+             y = 'proportionC',
+             fill = input$demo_filter_group
+           )) +
+      geom_col() +
+      labs(title= "Répartition des comsommateurs qui se sont plain.", y = "%")
+  })
+  
+  
+  ###
   output$ex1 <- renderPlot({
     ggplot(data = data, mapping = aes(x = Income, y = MntWines,
                                       color = Marital_Status)) +
@@ -433,8 +514,6 @@ rate") +
                   colnames = c('Product category', 'Total expenses', 'Percentage'),
                   rownames = FALSE)
   })
-  
-               
 }
 
 shinyApp(ui, server)
