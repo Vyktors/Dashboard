@@ -134,9 +134,9 @@ ui <- grid_page(
             "area3             area3             area10            "
           ),
           row_sizes = c(
-            "0.27fr",
-            "1.15fr",
-            "1.58fr"
+            "70px",
+            "0.4fr",
+            "0.4fr"
           ),
           col_sizes = c(
             "1.27fr",
@@ -190,9 +190,9 @@ ui <- grid_page(
             "area9             area9             area10            "
           ),
           row_sizes = c(
-            "0.27fr",
-            "1.32fr",
-            "1.41fr"
+            "70px",
+            "0.4fr",
+            "0.4fr"
           ),
           col_sizes = c(
             "1.27fr",
@@ -202,6 +202,8 @@ ui <- grid_page(
           gap_size = "10px",
           grid_card(
             area = "area0",
+            item_gap = "158px",
+            scrollable = TRUE,
             title = "Include/Exclude groups from the total",
             checkboxGroupInput(inputId = "selected_age",
                                label = "Available age groups:",
