@@ -168,7 +168,7 @@ ui <- grid_page(
                         label = "Filter by",
                         choices = list(
                           `Age group` = "Age_Category",
-                          `Number of children` = "children_Count",
+                          `Number of children` = "Total_childrens",
                           `Yearly income` = "Income_Range"
                         ),
                         selected = "Age_Category")
