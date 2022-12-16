@@ -1,4 +1,0 @@
-
-library(shinyuieditor)
-
-launch_editor(app_loc = "dashboard_projet/")
