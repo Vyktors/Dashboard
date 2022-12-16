@@ -40,7 +40,6 @@ campaign_data <- campaign_data %>%
     Income < 75000 ~ '60k - 75k',
     Income >= 75000 ~ '75k+'
   ))
-
 campaign_data['Total_childrens'] <- campaign_data['Kidhome'] + campaign_data['Teenhome']
 
 
@@ -585,7 +584,6 @@ server <- function(input, output, session) {
       updateActionButton(session, "buttonCB", "Colorblind Mode OFF")
     }  
   })
-  
 }
 
 shinyApp(ui, server)
