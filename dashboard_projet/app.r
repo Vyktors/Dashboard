@@ -225,7 +225,7 @@ ui <- grid_page(
             title = "Filters",
             selectInput(inputId = "x", 
                         label = "Demographic classification",
-                        choices = c("Number of children" = "Children_Count", 
+                        choices = c("Number of children" = "Total_childrens", 
                                     "Income Range" = "Income_Range", 
                                     "Age category" = "Age_Category"), 
                         selected = "Age_Category"),
