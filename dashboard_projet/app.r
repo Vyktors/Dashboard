@@ -9,8 +9,12 @@ library(ggthemr)
 library(treemapify)
 library(ggrepel)
 library(ggfittext)
+library(scales)
 
 ggthemr('pale')
+
+###Default color palette at the application launch
+colorblind_state <<- 1
 
 # we have a tabulation separator
 campaign_data <- read.csv('data/marketing_campaign.csv', sep='\t')
@@ -20,9 +24,9 @@ campaign_data['Age'] <- 2019 - campaign_data['Year_Birth']
 campaign_data <- campaign_data %>%
   mutate(Age_Category = case_when(
     Age <= 35 ~ '35 and -',
-    Age <= 45 ~ '36-45',
-    Age <= 55 ~ '46-55',
-    Age <= 65 ~ '55-65',
+    Age <= 45 ~ '36 - 45',
+    Age <= 55 ~ '46 - 55',
+    Age <= 65 ~ '55 - 65',
     Age > 65 ~ '66 and +'
   ))
 
@@ -34,7 +38,7 @@ campaign_data <- campaign_data %>%
     Income < 45000 ~ '20k - 45k',
     Income < 60000 ~ '45k - 60k',
     Income < 75000 ~ '60k - 75k',
-    Income >= 75000 ~ '75k+',
+    Income >= 75000 ~ '75k+'
   ))
 
 campaign_data['Total_childrens'] <- campaign_data['Kidhome'] + campaign_data['Teenhome']
@@ -54,8 +58,8 @@ marital_status_list <- unique(campaign_data$Marital_Status)
 
 ui <- grid_page(
   layout = c(
-    "area2 header",
-    "area1 area1 "
+    "colorB header area2",
+    "area1 area1 area1"
   ),
   row_sizes = c(
     "70px",
@@ -63,7 +67,8 @@ ui <- grid_page(
   ),
   col_sizes = c(
     "140px",
-    "1fr"
+    "1fr",
+    "140px"
   ),
   gap_size = "1rem",
   grid_card_text(
@@ -72,6 +77,8 @@ ui <- grid_page(
     alignment = "center",
     is_title = TRUE
   ),
+  actionButton("buttonCB", "Colorblind Mode OFF", 
+               style="color: #fff; background-color: #337ab7; border-color: #2e6da4"),
   grid_card(
     area = "area1",
     tabsetPanel(
@@ -80,32 +87,32 @@ ui <- grid_page(
         grid_container(
           layout = c(
             "title_demographic title_demographic title_demographic",
-            "area2             area7             area0            ",
-            "area2             area7             area0            "
+            "area2             area2             area0            ",
+            "area7             area7             area0            "
           ),
           row_sizes = c(
             "0.27fr",
-            "1.73fr",
-            "1fr"
+            "1.15fr",
+            "1.50fr"
           ),
           col_sizes = c(
             "1.27fr",
             "1.27fr",
-            "0.46fr"
+            "240px"
           ),
           gap_size = "10px",
           grid_card(
             area = "area0",
-            title = "Filters",
+            title = "Filter",
             radioButtons(
               inputId = "demo_filter_group",
-              label = "Trier par",
+              label = "Filter by",
               choices = list(
-                `Âge` = "Age_Category",
-                `Nombre d'enfant` = "Total_childrens",
-                `Éducation` = "Education",
-                `Revenu Annuel` = "Income_Range",
-                `Statut Marital` = "Marital_Status"
+                `Age group` = "Age_Category",
+                `Number of children` = "Total_childrens",
+                `Education level` = "Education",
+                `Yearly income` = "Income_Range",
+                `Marital Status` = "Marital_Status"
               ),
               width = "100%"
             )
@@ -135,25 +142,35 @@ ui <- grid_page(
           col_sizes = c(
             "1.27fr",
             "1.27fr",
-            "0.46fr"
+            "240px"
           ),
           gap_size = "10px",
           grid_card(
             area = "area0",
             title = "Filters",
             selectInput(inputId = "place_y", 
-                        label = "Y-axis:",
+                        label = "X-axis:",
                         choices = c("Education" = "Education", 
                                     "Marital status" = "Marital_Status", 
-                                    "Age category" = "Age_Category"), 
-                        selected = "Age_Category")
+                                    "Age group" = "Age_Category"), 
+                        selected = "Age_Category"),
+            selectInput(inputId = "place_x", 
+                        label = "Y-axis:",
+                        choices = c("In-store purchases" = "NumStorePurchases", 
+                                    "Web purchases" = "NumWebPurchases", 
+                                    "Catalog purchases" = "NumCatalogPurchases"), 
+                        selected = "NumStorePurchases")
           ),
           grid_card(
             area = "area10",
-            title = "Filters",
+            title = "Filter",
             selectInput(inputId = "xpromotionGraph",
-                        label = "Visualisation2_Category",
-                        choices = c("Age_Category", "Income_Category","children_count"),
+                        label = "Filter by",
+                        choices = list(
+                          `Age group` = "Age_Category",
+                          `Number of children` = "children_Count",
+                          `Yearly income` = "Income_Range"
+                        ),
                         selected = "Age_Category")
           ),
           grid_card_text(
@@ -175,47 +192,54 @@ ui <- grid_page(
           ),
           row_sizes = c(
             "0.27fr",
-            "1.25fr",
-            "1.48fr"
+            "1.32fr",
+            "1.41fr"
           ),
           col_sizes = c(
             "1.27fr",
             "1.27fr",
-            "0.46fr"
+            "240px"
           ),
           gap_size = "10px",
           grid_card(
             area = "area0",
-            title = "Fig. 1:",
+            title = "Include/Exclude groups from the total",
             checkboxGroupInput(inputId = "selected_age",
-                               label = "Select the age category:",
+                               label = "Available age groups:",
                                choices = age_category_list,
                                selected = age_category_list),
             
             # Select which the education level to plot, select all by default
             checkboxGroupInput(inputId = "selected_education",
-                               label = "Select the education level:",
+                               label = "Available education levels:",
                                choices = education_list,
                                selected = education_list),
             
             # Select which the marital status to plot, select all by default
             checkboxGroupInput(inputId = "selected_marital_status",
-                               label = "Select the marital status:",
+                               label = "Available marital statuses:",
                                choices = marital_status_list,
                                selected = marital_status_list)
           ),
           grid_card(
             area = "area10",
-            title = "Fig. 2:",
+            title = "Filters",
             selectInput(inputId = "x", 
-                        label = "Visualisation1_Category",
-                        choices = c("Age_Category", "Income_Range"), 
+                        label = "Demographic classification",
+                        choices = c("Number of children" = "Children_Count", 
+                                    "Income Range" = "Income_Range", 
+                                    "Age category" = "Age_Category"), 
                         selected = "Age_Category"),
             
             
             selectInput(inputId = "y", 
-                        label = "Visualisation1_Product_type",
-                        choices = c("mean_MntWines","mean_MntFruits","mean_MntMeatProducts","mean_MntFishProducts","mean_MntSweetProducts","mean_MntGoldProds"), 
+                        label = "Product category",
+                        choices = c("Wines" = "mean_MntWines", 
+                                    "Fruits" = "mean_MntFruits",
+                                    "Meat products" = "mean_MntMeatProducts", 
+                                    "Fish products" = "mean_MntFishProducts",
+                                    "Sweet product" = "mean_MntSweetProducts", 
+                                    "Gold products" = "mean_MntGoldProds"), 
                         selected = "mean_MntWines")
           ),
           grid_card_text(
@@ -234,10 +258,9 @@ ui <- grid_page(
   img(src="logo.jpg", width="130px", height="80px")
 )
 
-server <- function(input, output) {
+server <- function(input, output, session) {
   
   data <- read.csv('data/marketing_campaign.csv', sep='\t')
-  
   
   ###Demographic plots
   
@@ -262,7 +285,10 @@ server <- function(input, output) {
              fill = input$demo_filter_group
            )) +
       geom_col() +
-      labs(title= "Répartition des comsommateurs", y = "%")
+      labs(title= "Distribution of consumers", y = "Proportion (%)") +
+      theme(legend.position="none") +
+      theme(text = element_text(size=18)) +
+      labs(x = gsub("_", " ", input$demo_filter_group))
   })
   
   
@@ -280,34 +306,32 @@ server <- function(input, output) {
   })
   
   output$demoComplain <- renderPlot({
-    ggplot(demo_per_filter_complain(), 
-           mapping = aes_string(
+    ggplot(demo_per_filter_complain(), aes_string(
              x = input$demo_filter_group,
              y = 'proportionC',
              fill = input$demo_filter_group
            )) +
       geom_col() +
-      labs(title= "Répartition des comsommateurs qui se sont plain.", y = "%")
+      labs(title= "Distribution of consumers who have complained at least once", y = "Proportion (%)") +
+      theme(legend.position="none") +
+      theme(text = element_text(size=18)) +
+      labs(x = gsub("_", " ", input$demo_filter_group))
   })
   
   ###### Marketing places
-  place_data <- campaign_data %>%
-    pivot_longer(cols=c("NumWebPurchases", "NumCatalogPurchases", "NumStorePurchases"),
-                 names_to="Places",
-                 values_to="Count")
-  
-  place_data_per_filter <- reactive({
-    place_data %>%
-      group_by_at(c(input$place_y, 'Places')) %>%
-      summarise(total = sum(Count)) %>%
-      group_by_at(input$place_y) %>%
-      mutate(proportion = total / sum(total))
-  })
+
   
   output$placeGraph <- renderPlot({
-    ggplot(place_data_per_filter()) +
-      geom_tile(aes_string(x = 'Places', y = input$place_y, fill = 'proportion')) +
-      labs(title="Percentage of the number of purchases per place")
+    ggplot(campaign_data) + 
+      geom_boxplot(
+        aes_string(x = input$place_y, y = input$place_x, fill = input$place_y),
+        size = 1.5, outlier.size = 5
+      ) +
+      labs(title="Percentage of the number of purchases per place") +
+      labs(title=if_else(input$place_x == "NumStorePurchases", "Number of in-store transactions per customer", if_else(input$place_x == "NumWebPurchases", "Number of web transactions per customer", "Number of catalog transactions per customer"))) +
+      theme(legend.position="none") +
+      theme(text = element_text(size=18)) +
+      labs(x = gsub("_", " ", input$place_y))
   })
   
   
@@ -346,9 +370,11 @@ server <- function(input, output) {
   output$amountGraph <- renderPlot({
     ggplot(data = product_data_percentage()) +
       geom_pointrange(mapping = aes(x = reorder(MntCategory, -total), y = total, ymin = 0, ymax = total, color = reorder(MntCategory, -total)), linewidth = 2, size = 3) +
-      labs(title="Percentage of amount spent on each category",
-           x ="Category", y = "Total Expenses") +
-      theme(legend.position="none")
+      labs(title="Total amount spent on each product category",
+           x ="Category", y = "Total Expenses ($)") +
+      theme(legend.position="none") +
+      theme(text = element_text(size=18)) + 
+      scale_y_continuous(labels = label_comma())
   })
   
   output$table <- DT::renderDataTable({
@@ -379,7 +405,8 @@ server <- function(input, output) {
                         place = "centre",
                         reflow = TRUE,
                         size = 17) +
-      labs(title="Habitude de consommation par type de client")
+      theme(text = element_text(size=18)) + 
+      labs(title="Average expenses by customer and product type", fill=if_else(input$y == "mean_MntWines", "Average expense for\nwines ($)", if_else(input$y == "mean_MntMeatProducts", "Average expense for\nmeat products ($)", if_else(input$y == "mean_MntGoldProds", "Average expense for\ngold products ($)", if_else(input$y == "mean_MntFishProducts", "Average expense for\nfish products ($)", if_else(input$y == "mean_MntSweetProducts", "Average expense for\nsweets ($)", "Average expense for\nfruits ($)"))))))
   })
   
   #### Promotion graph
@@ -388,7 +415,7 @@ server <- function(input, output) {
   
   df2$campaign_accepted <- df2$AcceptedCmp1 | df2$AcceptedCmp2 | df2$AcceptedCmp3 | df2$AcceptedCmp4 | df2$AcceptedCmp5
   
-  df2$children_count <- rowSums(df2[, c("Kidhome", "Teenhome")])
+  df2$Children_Count <- rowSums(df2[, c("Kidhome", "Teenhome")])
   
   accepted_percentage_campaign <- reactive({
     
@@ -405,14 +432,160 @@ server <- function(input, output) {
     
     
     
-    ggplot( accepted_percentage_campaign(),aes_string(x=input$xpromotionGraph, y='Pourcentage')) +
-      geom_segment( aes_string(xend=input$xpromotionGraph, yend=0)) +
-      geom_point( size=4, color="orange") +coord_flip() +
-      theme_bw() +
-      xlab("")+labs(x=input$xpromotionGraph,y='Pourcentage',
-                    title="Pourcentage à répondre aux réductions de prix")
+    ggplot( accepted_percentage_campaign(),aes_string(x=input$xpromotionGraph, y='Pourcentage', color=input$xpromotionGraph)) +
+      geom_segment( aes_string(xend=input$xpromotionGraph, yend=0), size=2) +
+      geom_point( size=8) +coord_flip() +
+      xlab("")+labs(x = gsub("_", " ", input$xpromotionGraph),y='Percentage (%)',
+                    title="Most likely groups to respond to price reductions") +
+      theme(legend.position="none") +
+      theme(text = element_text(size=18))
     
   })
+  observeEvent(input$buttonCB, {
+    if (colorblind_state == 1)
+    {
+      colorblind_state <<- 2
+      ggthemr('fresh')
+      output$consumptionGraph <- renderPlot({
+        ggplot(habitude_consommation(), aes_string(area = input$y, fill = input$y, label = input$x)) +
+          geom_treemap() +
+          geom_treemap_text(colour = "white",
+                            place = "centre",
+                            reflow = TRUE,
+                            size = 17) +
+          theme(text = element_text(size=18)) +
+          labs(title="Average expenses by customer and product type", fill=if_else(input$y == "mean_MntWines", "Average expense for\nwines ($)", if_else(input$y == "mean_MntMeatProducts", "Average expense for\nmeat products ($)", if_else(input$y == "mean_MntGoldProds", "Average expense for\ngold products ($)", if_else(input$y == "mean_MntFishProducts", "Average expense for\nfish products ($)", if_else(input$y == "mean_MntSweetProducts", "Average expense for\nsweets ($)", "Average expense for\nfruits ($)"))))))
+      })
+      output$promotionGraph<- renderPlot({
+        ggplot( accepted_percentage_campaign(),aes_string(x=input$xpromotionGraph, y='Pourcentage', color=input$xpromotionGraph)) +
+          geom_segment( aes_string(xend=input$xpromotionGraph, yend=0), size=2) +
+          geom_point( size=8) +coord_flip() +
+          xlab("")+labs(x = gsub("_", " ", input$xpromotionGraph),y='Percentage (%)',
+                        title="Most likely groups to respond to price reductions") +
+          theme(legend.position="none") +
+          theme(text = element_text(size=18))
+      })
+      output$amountGraph <- renderPlot({
+        ggplot(data = product_data_percentage()) +
+          geom_pointrange(mapping = aes(x = reorder(MntCategory, -total), y = total, ymin = 0, ymax = total, color = reorder(MntCategory, -total)), linewidth = 2, size = 3) +
+          labs(title="Total amount spent on each product category",
+               x ="Category", y = "Total Expenses ($)") +
+          theme(legend.position="none") +
+          theme(text = element_text(size=18)) + 
+          scale_y_continuous(labels = label_comma())
+      })
+      output$placeGraph <- renderPlot({
+        ggplot(campaign_data) + 
+          geom_boxplot(
+            aes_string(x = input$place_y, y = input$place_x, fill = input$place_y),
+            size = 1.5, outlier.size = 5
+          ) +
+          labs(title=if_else(input$place_x == "NumStorePurchases", "Number of in-store transactions per customer", if_else(input$place_x == "NumWebPurchases", "Number of web transactions per customer", "Number of catalog transactions per customer"))) +
+          theme(legend.position="none") +
+          theme(text = element_text(size=18)) +
+          labs(x = gsub("_", " ", input$place_y))
+      })
+      output$demoGraph <- renderPlot({
+        ggplot(demo_per_filter_graph(), 
+               mapping = aes_string(
+                 x = input$demo_filter_group,
+                 y = 'proportion',
+                 fill = input$demo_filter_group
+               )) +
+          geom_col() +
+          labs(title= "Distribution of consumers", y = "Proportion (%)") +
+          theme(legend.position="none") +
+          theme(text = element_text(size=18)) +
+          labs(x = gsub("_", " ", input$demo_filter_group))
+      })
+      output$demoComplain <- renderPlot({
+        ggplot(demo_per_filter_complain(), 
+               mapping = aes_string(
+                 x = input$demo_filter_group,
+                 y = 'proportionC',
+                 fill = input$demo_filter_group
+               )) +
+          geom_col() +
+          labs(title= "Distribution of consumers who have complained at least once", y = "Proportion (%)") +
+          theme(legend.position="none") +
+          theme(text = element_text(size=18)) +
+          labs(x = gsub("_", " ", input$demo_filter_group))
+      })
+      updateActionButton(session, "buttonCB", "Colorblind Mode ON")
+    }
+    else
+    {
+      colorblind_state <<- 1
+      ggthemr('pale')
+      output$consumptionGraph <- renderPlot({
+        ggplot(habitude_consommation(), aes_string(area = input$y, fill = input$y, label = input$x)) +
+          geom_treemap() +
+          geom_treemap_text(colour = "black",
+                            place = "centre",
+                            reflow = TRUE,
+                            size = 17) +
+          theme(text = element_text(size=18)) +
+          labs(title="Average expenses by customer and product type", fill=if_else(input$y == "mean_MntWines", "Average expense for\nwines ($)", if_else(input$y == "mean_MntMeatProducts", "Average expense for\nmeat products ($)", if_else(input$y == "mean_MntGoldProds", "Average expense for\ngold products ($)", if_else(input$y == "mean_MntFishProducts", "Average expense for\nfish products ($)", if_else(input$y == "mean_MntSweetProducts", "Average expense for\nsweets ($)", "Average expense for\nfruits ($)"))))))
+      })
+      output$promotionGraph<- renderPlot({
+        ggplot( accepted_percentage_campaign(),aes_string(x=input$xpromotionGraph, y='Pourcentage', color=input$xpromotionGraph)) +
+          geom_segment( aes_string(xend=input$xpromotionGraph, yend=0), size=2) +
+          geom_point( size=8) +coord_flip() +
+          xlab("")+labs(x = gsub("_", " ", input$xpromotionGraph),y='Percentage (%)',
+                        title="Most likely groups to respond to price reductions") +
+          theme(legend.position="none") +
+          theme(text = element_text(size=18))
+      })
+      output$amountGraph <- renderPlot({
+        ggplot(data = product_data_percentage()) +
+          geom_pointrange(mapping = aes(x = reorder(MntCategory, -total), y = total, ymin = 0, ymax = total, color = reorder(MntCategory, -total)), linewidth = 2, size = 3) +
+          labs(title="Total amount spent on each product category",
+               x ="Category", y = "Total Expenses ($)") +
+          theme(legend.position="none") +
+          theme(text = element_text(size=18)) + 
+          scale_y_continuous(labels = label_comma())
+      })
+      output$placeGraph <- renderPlot({
+        ggplot(campaign_data) + 
+          geom_boxplot(
+            aes_string(x = input$place_y, y = input$place_x, fill = input$place_y),
+            size = 1.5, outlier.size = 5
+          ) +
+          labs(title=if_else(input$place_x == "NumStorePurchases", "Number of in-store transactions per customer", if_else(input$place_x == "NumWebPurchases", "Number of web transactions per customer", "Number of catalog transactions per customer"))) +
+          theme(legend.position="none") +
+          theme(text = element_text(size=18)) +
+          labs(x = gsub("_", " ", input$place_y))
+      })
+      output$demoGraph <- renderPlot({
+        ggplot(demo_per_filter_graph(), 
+               mapping = aes_string(
+                 x = input$demo_filter_group,
+                 y = 'proportion',
+                 fill = input$demo_filter_group
+               )) +
+          geom_col() +
+          labs(title= "Distribution of consumers", y = "Proportion (%)") +
+          theme(legend.position="none") +
+          theme(text = element_text(size=18)) +
+          labs(x = gsub("_", " ", input$demo_filter_group))
+      })
+      output$demoComplain <- renderPlot({
+        ggplot(demo_per_filter_complain(), 
+               mapping = aes_string(
+                 x = input$demo_filter_group,
+                 y = 'proportionC',
+                 fill = input$demo_filter_group
+               )) +
+          geom_col() +
+          labs(title= "Distribution of consumers who have complained at least once", y = "Proportion (%)") +
+          theme(legend.position="none") +
+          theme(text = element_text(size=18)) +
+          labs(x = gsub("_", " ", input$demo_filter_group))
+      })
+      updateActionButton(session, "buttonCB", "Colorblind Mode OFF")
+    }  
+  })
+  
 }
 
 shinyApp(ui, server)
