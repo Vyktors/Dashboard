@@ -90,9 +90,9 @@ ui <- grid_page(
             "area7             area7             area0            "
           ),
           row_sizes = c(
-            "0.27fr",
-            "1.15fr",
-            "1.50fr"
+            "70px",
+            "0.4fr",
+            "0.4fr"
           ),
           col_sizes = c(
             "1.27fr",
